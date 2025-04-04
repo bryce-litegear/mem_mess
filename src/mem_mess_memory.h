@@ -1,0 +1,6 @@
+
+#ifndef MEM_MESS_MEMORY_H
+#define MEM_MESS_MEMORY_H
+
+
+#endif // MEM_MESS_MEMORY_H
