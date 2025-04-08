@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h> // for ldiv_t
 
 #ifdef TEST
 #define STATIC
@@ -37,24 +38,47 @@
 
 //#define MEM_REC_IS_SORTED
 
+
+// we pass the target pointer to background process, this macro will validate
+// that pointer as an member of an array of structure. So the array must be in the 
+// scope of the background function.
+#define MEM_MESS_VALIDATE_PTR(ARR, INSTANCE) mm_get_element_of((uint8_t*)ARR, sizeof ARR, sizeof ARR[0], (uint8_t*)(INSTANCE))
+static inline int32_t mm_get_element_of(uint8_t *arr, uint32_t arr_size, int32_t element_size, uint8_t *element)
+{
+    ldiv_t res = ldiv((int32_t)(element - arr), element_size);
+    bool in_range = element < &arr[arr_size] && element >= arr;
+    return res.rem || !in_range ? -1: res.quot;  // if non zero remainder then not a valid pointer to array element
+}
+
+// forward reference
 typedef struct mem_mess_record_t mem_mess_record_t;
 
-// any special mapping function for indexing
+// template for user supplied mapping function that remaps index in payloads
 typedef uint32_t (*mem_mess_map_t)(uint32_t);
-typedef void (*mem_mess_background_t)(void *memadd);
 
+// user supplied mapping function for remapping indexs from messages to memory images.
+extern mem_mess_map_t mem_mess_map;
+
+
+typedef void (*mem_mess_background_t)(void *mem_inst);
+
+
+// template for user supplied function that schedules the background functions
+// when messages are processed in isr rather than background.
 typedef void (*mem_mess_scheduler_t)(mem_mess_background_t bg_func, void *memadd);
+
+// user supplied scheduler function 
 extern mem_mess_scheduler_t mem_mess_scheduler;
 
 // for immediate action on data, bypass the default copy
 typedef int (*mem_mess_immediate_t)(mem_mess_record_t *mesrec, uint8_t *payload);
 
+// the default processing functions, available for user processing in user supplied immediate functions.
 int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload);
 int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload);
 
-
+// message definition record, maps message token to memory area.
 // optional features assume that 0 or NULL is disabled
-
 typedef struct mem_mess_record_t
 {
     mem_mess_map_t mapper;
@@ -75,10 +99,18 @@ typedef struct mem_mess_record_t
         uint16_t index_offset: 4;   // index must start in the first 16 bytes of the payload
         uint16_t len_offset: 4;     // index must start in the first 16 bytes of the payload
     };
-
-
 } mem_mess_record_t;
 
+
+/**
+ * @brief main caller for processing payloads against message descriptions
+ * 
+ * @param mesrec 
+ * @param payload 
+ * @param pl_size 
+ * @return int 
+ */
+int mem_mess_process(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
 
 
 
