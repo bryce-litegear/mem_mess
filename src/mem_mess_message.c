@@ -40,7 +40,7 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
                 if(mesrec->mapper) index = mesrec->mapper(index);
                 else if (mem_mess_map) index = mem_mess_map(index);
                 pl_start = (uint32_t)mesrec->index_offset + 4;
-                pl_len -= 4;
+                pl_len -= pl_start;
             }
             else if(mesrec->byte_indexed) // payload has a byte size address
             {
@@ -48,7 +48,7 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
                 if(mesrec->mapper) index = mesrec->mapper(index);
                 else if (mem_mess_map) index = mem_mess_map(index);
                 pl_start = (uint32_t)mesrec->index_offset + 1;
-                pl_len -= 1;
+                pl_len -= pl_start;
             }
 
             if(mesrec->word_length)  // payload was variable length with 32bit length value

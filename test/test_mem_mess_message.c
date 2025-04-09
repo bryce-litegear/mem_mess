@@ -162,3 +162,78 @@ void test_mem_mess_setter_indexed_offset32(void)
     TEST_ASSERT_EQUAL(temp.us, my_data_set[2].us);
     TEST_ASSERT_EQUAL(temp.ub[0], my_data_set[2].ub[0]);    
 }
+
+mem_mess_record_t indexoffset8_message = 
+{
+    .mem_pnt = my_data_set,
+    .mem_struct_len = sizeof my_data_set[0]+3,
+    .byte_indexed=1,
+    .index_offset=2,
+};
+
+void test_mem_mess_setter_indexed_offset8(void)
+{
+    struct 
+    {
+        uint8_t res;
+        uint8_t res2;
+        uint8_t pix;
+        uint8_t data[sizeof(my_struct)];
+    } payload = {.pix=7};
+
+    my_struct temp = {.ui = 23256, .us = 5244, .ub[1] = 226};
+
+    memcpy(payload.data, &temp, sizeof temp);
+    
+
+    TEST_ASSERT_EQUAL(0, mem_mess_process(&indexoffset8_message, (uint8_t*)&payload, sizeof payload));
+    TEST_ASSERT_EQUAL(temp.ui, my_data_set[7].ui);
+    TEST_ASSERT_EQUAL(temp.us, my_data_set[7].us);
+    TEST_ASSERT_EQUAL(temp.ub[1], my_data_set[7].ub[1]);
+
+    payload.pix = 3;
+
+    TEST_ASSERT_EQUAL(0, mem_mess_process(&indexoffset8_message, (uint8_t*)&payload, sizeof payload));
+    TEST_ASSERT_EQUAL(temp.ui, my_data_set[3].ui);
+    TEST_ASSERT_EQUAL(temp.us, my_data_set[3].us);
+    TEST_ASSERT_EQUAL(temp.ub[0], my_data_set[3].ub[0]);    
+}
+
+
+mem_mess_record_t indexoffset8_vlen_message = 
+{
+    .mem_pnt = my_data_set,
+    .mem_struct_len = sizeof my_data_set[0]+3,
+    .byte_indexed=1,
+    .index_offset=2,
+    .byte_length=1,
+    .len_offset=1,
+};
+
+void test_mem_mess_setter_indexed_offset8_vlen(void)
+{
+    struct 
+    {
+        uint8_t res;
+        uint8_t len;
+        uint8_t pix;
+        uint8_t data[sizeof(my_struct)];
+    } payload = {.pix=7, .len = sizeof my_data_set[0]};
+
+    my_struct temp = {.ui = 256, .us = 524, .ub[1] = 22};
+
+    memcpy(payload.data, &temp, sizeof temp);
+    
+
+    TEST_ASSERT_EQUAL(0, mem_mess_process(&indexoffset8_vlen_message, (uint8_t*)&payload, sizeof payload));
+    TEST_ASSERT_EQUAL(temp.ui, my_data_set[7].ui);
+    TEST_ASSERT_EQUAL(temp.us, my_data_set[7].us);
+    TEST_ASSERT_EQUAL(temp.ub[1], my_data_set[7].ub[1]);
+
+    payload.pix = 3;
+
+    TEST_ASSERT_EQUAL(0, mem_mess_process(&indexoffset8_vlen_message, (uint8_t*)&payload, sizeof payload));
+    TEST_ASSERT_EQUAL(temp.ui, my_data_set[3].ui);
+    TEST_ASSERT_EQUAL(temp.us, my_data_set[3].us);
+    TEST_ASSERT_EQUAL(temp.ub[0], my_data_set[3].ub[0]);    
+}
