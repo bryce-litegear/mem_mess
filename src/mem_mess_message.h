@@ -71,11 +71,11 @@ typedef void (*mem_mess_scheduler_t)(mem_mess_background_t bg_func, void *memadd
 extern mem_mess_scheduler_t mem_mess_scheduler;
 
 // for immediate action on data, bypass the default copy
-typedef int (*mem_mess_immediate_t)(mem_mess_record_t *mesrec, uint8_t *payload);
+typedef int (*mem_mess_immediate_t)(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
 
 // the default processing functions, available for user processing in user supplied immediate functions.
-int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload);
-int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload);
+int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
+int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
 
 // message definition record, maps message token to memory area.
 // optional features assume that 0 or NULL is disabled
@@ -84,15 +84,15 @@ typedef struct mem_mess_record_t
     mem_mess_map_t mapper;
     mem_mess_immediate_t immediate;
     mem_mess_background_t background;
-    void *mem_pnt;
+    void *mem_struct_pnt;
     uint16_t mem_struct_len;
     uint16_t token;     // the sortable unique token that identifies the message (message_no)
     struct {
-        uint16_t byte_indexed: 1;   // byte in payload is an index into array of data structs
-        uint16_t word_indexed: 1;   // 4 bytes in payload are index
+        uint16_t indexed8: 1;   // byte in payload is an index into array of data structs
+        uint16_t indexed32: 1;   // 4 bytes in payload are index
 
-        uint16_t byte_length: 1;    // byte in payload is a length
-        uint16_t word_length: 1;    // 4 bytes in payload is a length
+        uint16_t len8: 1;    // byte in payload is a length
+        uint16_t len32: 1;    // 4 bytes in payload is a length
         uint16_t is_getter: 1;      // the message is a getter (causes a new message to be built)
         uint16_t bg_on_change: 1;   // only call background function on change
 

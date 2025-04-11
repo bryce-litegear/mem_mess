@@ -21,7 +21,7 @@ uint32_t reg_buf[2] = {123, 456};
 mem_mess_record_t regular_message = 
 {
     .background = my_mem_mess_background,
-    .mem_pnt = reg_buf,
+    .mem_struct_pnt = reg_buf,
     .mem_struct_len = sizeof reg_buf,
 };
 
@@ -43,8 +43,8 @@ void test_mem_mess_setter(void)
 
 }
 
-
-typedef struct my_struct
+// hand packed
+typedef struct my_struct 
 {
     uint32_t ui;
     uint16_t us;
@@ -57,14 +57,14 @@ my_struct my_data_set[10];
 mem_mess_record_t indexed8_message = 
 {
     .background = my_mem_mess_background,
-    .mem_pnt = my_data_set,
+    .mem_struct_pnt = my_data_set,
     .mem_struct_len = sizeof my_data_set[0]+1,
-    .byte_indexed=1,
+    .indexed8=1,
 };
 
 void test_mem_mess_setter_indexed8(void)
 {
-    struct 
+    struct  // bytes
     {
         uint8_t pix;
         uint8_t data[sizeof(my_struct)];
@@ -94,18 +94,18 @@ void test_mem_mess_setter_indexed8(void)
 mem_mess_record_t indexed32_message = 
 {
     .background = my_mem_mess_background,
-    .mem_pnt = my_data_set,
+    .mem_struct_pnt = my_data_set,
     .mem_struct_len = sizeof my_data_set[0]+4,
-    .word_indexed=1,
+    .indexed32=1,
 };
 
 void test_mem_mess_setter_indexed32(void)
 {
     struct 
     {
-        uint32_t pix;
+        uint8_t pix[4];
         uint8_t data[sizeof(my_struct)];
-    } payload = {.pix=5};
+    } payload = {.pix[0]=5};
 
     my_struct temp = {.ui = 23456, .us = 5434, .ub[1] = 72};
 
@@ -119,7 +119,7 @@ void test_mem_mess_setter_indexed32(void)
     TEST_ASSERT_EQUAL(temp.ub[0], my_data_set[5].ub[0]);
 
     my_mem_mess_background_Expect(&my_data_set[2]);
-    payload.pix = 2;
+    payload.pix[0] = 2;
 
     TEST_ASSERT_EQUAL(0, mem_mess_process(&indexed32_message, (uint8_t*)&payload, sizeof payload));
     TEST_ASSERT_EQUAL(temp.ui, my_data_set[2].ui);
@@ -130,20 +130,22 @@ void test_mem_mess_setter_indexed32(void)
 
 mem_mess_record_t indexoffset_message = 
 {
-    .mem_pnt = my_data_set,
+    .mem_struct_pnt = my_data_set,
     .mem_struct_len = sizeof my_data_set[0]+8,
-    .word_indexed=1,
+    .indexed32=1,
     .index_offset=4,
 };
+
+
 
 void test_mem_mess_setter_indexed_offset32(void)
 {
     struct 
     {
-        uint32_t res;
-        uint32_t pix;
+        uint8_t res[4];
+        uint8_t pix[4];
         uint8_t data[sizeof(my_struct)];
-    } payload = {.pix=1};
+    } payload = {.pix[0]=1};
 
     my_struct temp = {.ui = 2356, .us = 544, .ub[1] = 26};
 
@@ -155,7 +157,7 @@ void test_mem_mess_setter_indexed_offset32(void)
     TEST_ASSERT_EQUAL(temp.us, my_data_set[1].us);
     TEST_ASSERT_EQUAL(temp.ub[1], my_data_set[1].ub[1]);
 
-    payload.pix = 2;
+    payload.pix[0] = 2;
 
     TEST_ASSERT_EQUAL(0, mem_mess_process(&indexoffset_message, (uint8_t*)&payload, sizeof payload));
     TEST_ASSERT_EQUAL(temp.ui, my_data_set[2].ui);
@@ -165,9 +167,9 @@ void test_mem_mess_setter_indexed_offset32(void)
 
 mem_mess_record_t indexoffset8_message = 
 {
-    .mem_pnt = my_data_set,
+    .mem_struct_pnt = my_data_set,
     .mem_struct_len = sizeof my_data_set[0]+3,
-    .byte_indexed=1,
+    .indexed8=1,
     .index_offset=2,
 };
 
@@ -202,11 +204,11 @@ void test_mem_mess_setter_indexed_offset8(void)
 
 mem_mess_record_t indexoffset8_vlen_message = 
 {
-    .mem_pnt = my_data_set,
+    .mem_struct_pnt = my_data_set,
     .mem_struct_len = sizeof my_data_set[0]+3,
-    .byte_indexed=1,
+    .indexed8=1,
     .index_offset=2,
-    .byte_length=1,
+    .len8=1,
     .len_offset=1,
 };
 
@@ -236,4 +238,56 @@ void test_mem_mess_setter_indexed_offset8_vlen(void)
     TEST_ASSERT_EQUAL(temp.ui, my_data_set[3].ui);
     TEST_ASSERT_EQUAL(temp.us, my_data_set[3].us);
     TEST_ASSERT_EQUAL(temp.ub[0], my_data_set[3].ub[0]);    
+}
+
+
+
+// unique case of the binary flash programming messages
+// 0,size32,startAdd32,[256]
+
+uint8_t flash_target[256];
+uint32_t test_add = 0x1300; // page 19
+uint32_t test_size = sizeof flash_target;
+
+int32_t flash_process(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size)
+{
+    TEST_ASSERT_EQUAL(sizeof flash_target + 9, pl_size );
+    TEST_ASSERT_EQUAL_PTR(flash_target, mesrec->mem_struct_pnt);
+    TEST_ASSERT_EQUAL(sizeof flash_target + 9, mesrec->mem_struct_len);
+    uint32_t size;
+    uint32_t add;
+    memcpy(&size, &payload[mesrec->len_offset], sizeof size);
+    memcpy(&add, &payload[mesrec->index_offset], sizeof add);
+    TEST_ASSERT_TRUE(mesrec->len32);
+    TEST_ASSERT_TRUE(mesrec->indexed32);
+    TEST_ASSERT_EQUAL(test_add, add);
+    TEST_ASSERT_EQUAL(test_size, size);
+    return (int32_t)add;
+}
+
+mem_mess_record_t flash_rec_message =
+{
+    .mem_struct_pnt = flash_target,
+    .mem_struct_len = sizeof flash_target + 9,
+    .indexed32=1,
+    .index_offset=5,
+    .len32=1,
+    .len_offset=1,
+    .immediate = flash_process
+};
+
+void test_mem_mess_setter_indexed_len_1_4_4(void)
+{
+    struct 
+    {
+        uint8_t is_zero;
+        uint8_t size[4];
+        uint8_t add[4];
+        uint8_t data[sizeof(flash_target)];
+    } payload = {.is_zero=0};
+    memcpy(payload.add, &test_add, sizeof payload.add);
+    memcpy(payload.size, &test_size, sizeof payload.size);
+
+    TEST_ASSERT_EQUAL((int32_t)test_add, mem_mess_process(&flash_rec_message, (uint8_t*)&payload, sizeof payload));
+
 }

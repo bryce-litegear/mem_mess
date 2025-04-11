@@ -21,20 +21,21 @@ mem_mess_map_t mem_mess_map = NULL; // global mapper if not rec specific
  * 
  * @param mesrec - pointer to const 
  * @param payload 
+ * @param pl_size - actual size read or maximum possible 
  * @return int 
  */
-int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
+int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size)
 {
     if(mesrec) // need a message description to process, payload is optional
     {   
         bool changed = false;                   // set when copied data is changed
-        uint8_t*mem_start = mesrec->mem_pnt;    // initial copy target from message description
+        uint8_t*mem_start = mesrec->mem_struct_pnt;    // initial copy target from message description
         uint32_t index = 0;                     // optional index
         uint32_t pl_start = 0;                  // initial payload start offset
         uint32_t pl_len = mesrec->mem_struct_len; // initial payload length
         if(payload) // if we have a payload, process and copy from it to memory
         {
-            if(mesrec->word_indexed) // payload has a 32bit sized address
+            if(mesrec->indexed32) // payload has a 32bit sized address
             {
                 memcpy(&index, &payload[mesrec->index_offset], 4);
                 if(mesrec->mapper) index = mesrec->mapper(index);
@@ -42,7 +43,7 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
                 pl_start = (uint32_t)mesrec->index_offset + 4;
                 pl_len -= pl_start;
             }
-            else if(mesrec->byte_indexed) // payload has a byte size address
+            else if(mesrec->indexed8) // payload has a byte size address
             {
                 memcpy(&index, &payload[mesrec->index_offset], 1);
                 if(mesrec->mapper) index = mesrec->mapper(index);
@@ -51,13 +52,13 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
                 pl_len -= pl_start;
             }
 
-            if(mesrec->word_length)  // payload was variable length with 32bit length value
+            if(mesrec->len32)  // payload was variable length with 32bit length value
             {
                 pl_len = 0;
                 memcpy(&pl_len, &payload[mesrec->len_offset], 4);
                 if(mesrec->len_offset + 4 > pl_start) pl_start = mesrec->len_offset + 4;
             }
-            else if(mesrec->byte_length) // payload was variable length with 8bit length value
+            else if(mesrec->len8) // payload was variable length with 8bit length value
             {
                 pl_len = 0;
                 memcpy(&pl_len, &payload[mesrec->len_offset], 1);
@@ -94,18 +95,27 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
     return 0;
 }
 
-int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
+
+/**
+ * @brief 
+ * 
+ * @param mesrec 
+ * @param payload 
+ * @param pl_size 
+ * @return int 
+ */
+int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size)
 {
     if(mesrec && payload)
     {   
         bool changed = false;
-        uint8_t*mem_start = mesrec->mem_pnt;
+        uint8_t*mem_start = mesrec->mem_struct_pnt;
         uint32_t index = 0;
         uint32_t pl_start = 0;
         uint32_t pl_len = mesrec->mem_struct_len;
         if(payload)
         {
-            if(mesrec->word_indexed)
+            if(mesrec->indexed32)
             {
                 memcpy(&index, &payload[mesrec->index_offset], 4);
                 if(mesrec->mapper) index = mesrec->mapper(index);
@@ -113,7 +123,7 @@ int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
                 pl_start = (uint32_t)mesrec->index_offset + 4;
                 pl_len -= 4;
             }
-            else if(mesrec->byte_indexed)
+            else if(mesrec->indexed8)
             {
                 memcpy(&index, &payload[mesrec->index_offset], 1);
                 if(mesrec->mapper) index = mesrec->mapper(index);
@@ -122,13 +132,13 @@ int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload)
                 pl_len -= 1;
             }
 
-            if(mesrec->word_length)
+            if(mesrec->len32)
             {
                 pl_len = 0;
                 memcpy(&pl_len, &payload[mesrec->len_offset], 4);
                 if(mesrec->len_offset + 4 > pl_start) pl_start = mesrec->len_offset + 4;
             }
-            else if(mesrec->byte_length)
+            else if(mesrec->len8)
             {
                 pl_len = 0;
                 memcpy(&pl_len, &payload[mesrec->len_offset], 1);
@@ -176,16 +186,16 @@ int mem_mess_process(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t
         // if there is an immediate function, user takes all control, just call.
         if(mesrec->immediate)
         {
-            return  mesrec->immediate(mesrec, payload);
+            return  mesrec->immediate(mesrec, payload, pl_size);
         }
 
         if(mesrec->is_getter)
         {
-            return mem_mess_getter_copy(mesrec, payload);
+            return mem_mess_getter_copy(mesrec, payload, pl_size);
         }
         else
         {
-            return mem_mess_setter_copy(mesrec, payload);
+            return mem_mess_setter_copy(mesrec, payload, pl_size);
         }
     }
     else return -1;
