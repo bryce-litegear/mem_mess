@@ -77,28 +77,35 @@ typedef int (*mem_mess_immediate_t)(mem_mess_record_t const *mesrec, uint8_t *pa
 int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
 int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
 
-// message definition record, maps message token to memory area.
+// helper macros for building table
+#define MM_OBJ_ARR(arr) .mem_obj_pnt = arr, .mem_obj_len = sizeof arr, .mem_instance_len = sizeof arr[0]
+#define MM_OBJ(obj) .mem_obj_pnt = &obj, .mem_obj_len = sizeof obj, .mem_instance_len = sizeof obj
+
+// message definition record, maps message token to memory area and processing options
 // optional features assume that 0 or NULL is disabled
 typedef struct mem_mess_record_t
 {
-    mem_mess_map_t mapper;
-    mem_mess_immediate_t immediate;
-    mem_mess_background_t background;
-    void *mem_struct_pnt;
-    uint16_t mem_struct_len;
-    uint16_t token;     // the sortable unique token that identifies the message (message_no)
+    mem_mess_map_t mapper;              // optional index map function
+    mem_mess_immediate_t immediate;     // optional user provided override function
+    mem_mess_background_t background;   // optional user background processor of instance data
+    void *mem_obj_pnt;                  // root pointer
+    uint32_t mem_obj_len;               // root length
+    uint16_t mem_instance_len;          // instance len if subscripted, else equal to mem_obj_len
+    uint16_t token;                     // the sortable unique token that identifies the message (message_no)
+    uint16_t getter_token;              // for getters, the response token
+    uint16_t pl_offset;                 // position in pl of instance data
     struct {
-        uint16_t indexed8: 1;   // byte in payload is an index into array of data structs
-        uint16_t indexed32: 1;   // 4 bytes in payload are index
-
-        uint16_t len8: 1;    // byte in payload is a length
-        uint16_t len32: 1;    // 4 bytes in payload is a length
+        uint16_t indexed8: 1;       // byte in payload is an index into array of data structs
+        uint16_t indexed32: 1;      // 4 bytes in payload are index
+        uint16_t len8: 1;           // byte in payload is a length
+        uint16_t len32: 1;          // 4 bytes in payload is a length
         uint16_t is_getter: 1;      // the message is a getter (causes a new message to be built)
         uint16_t bg_on_change: 1;   // only call background function on change
-
-        uint16_t index_offset: 4;   // index must start in the first 16 bytes of the payload
-        uint16_t len_offset: 4;     // index must start in the first 16 bytes of the payload
+        uint16_t res: 10;           // reserved
     };
+    uint8_t index_offset;   // offset of index within the pl_offset
+    uint8_t len_offset;     // offset of len withing pl_offset
+
 } mem_mess_record_t;
 
 

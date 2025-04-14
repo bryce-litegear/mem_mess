@@ -29,48 +29,46 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
     if(mesrec) // need a message description to process, payload is optional
     {   
         bool changed = false;                   // set when copied data is changed
-        uint8_t*mem_start = mesrec->mem_struct_pnt;    // initial copy target from message description
+        uint8_t*mem_start = mesrec->mem_obj_pnt;    // initial copy target from message description
         uint32_t index = 0;                     // optional index
-        uint32_t pl_start = 0;                  // initial payload start offset
-        uint32_t pl_len = mesrec->mem_struct_len; // initial payload length
+        uint32_t pl_len = mesrec->mem_instance_len;  // initial payload length
         if(payload) // if we have a payload, process and copy from it to memory
         {
             if(mesrec->indexed32) // payload has a 32bit sized address
             {
                 memcpy(&index, &payload[mesrec->index_offset], 4);
                 if(mesrec->mapper) index = mesrec->mapper(index);
-                else if (mem_mess_map) index = mem_mess_map(index);
-                pl_start = (uint32_t)mesrec->index_offset + 4;
-                pl_len -= pl_start;
+                else if (mem_mess_map) index = mem_mess_map(index); // global mapper
             }
             else if(mesrec->indexed8) // payload has a byte size address
             {
                 memcpy(&index, &payload[mesrec->index_offset], 1);
                 if(mesrec->mapper) index = mesrec->mapper(index);
                 else if (mem_mess_map) index = mem_mess_map(index);
-                pl_start = (uint32_t)mesrec->index_offset + 1;
-                pl_len -= pl_start;
             }
 
             if(mesrec->len32)  // payload was variable length with 32bit length value
             {
                 pl_len = 0;
                 memcpy(&pl_len, &payload[mesrec->len_offset], 4);
-                if(mesrec->len_offset + 4 > pl_start) pl_start = mesrec->len_offset + 4;
             }
             else if(mesrec->len8) // payload was variable length with 8bit length value
             {
                 pl_len = 0;
                 memcpy(&pl_len, &payload[mesrec->len_offset], 1);
-                if(mesrec->len_offset + 1 > pl_start) pl_start = mesrec->len_offset + 1;
             }
 
             // if final payload length is non zero check for change and copy the data
             if(pl_len)
             {
                 mem_start +=  index * pl_len;
-                changed = memcmp(mem_start, &payload[pl_start], pl_len);
-                if( changed ) memcpy(mem_start, &payload[pl_start], pl_len);
+                // if payload fits within the object storage space
+                if( &mem_start[pl_len] <= &((uint8_t*)mesrec->mem_obj_pnt)[mesrec->mem_obj_len]) 
+                {
+                    uint16_t pl_start = mesrec->pl_offset;
+                    changed = memcmp(mem_start, &payload[pl_start], pl_len);
+                    if( changed ) memcpy(mem_start, &payload[pl_start], pl_len);
+                }
             }
 
             // if specific change or default behaviour, schedule the background function.
@@ -80,11 +78,11 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
             {
                 if(mesrec->background) // if background function exists, schedule or do direct call
                 {
-                    if(mem_mess_scheduler)
+                    if(mem_mess_scheduler) // if user defined a scheduler
                     {
                         mem_mess_scheduler(mesrec->background, mem_start);
                     }
-                    else
+                    else // if no scheduler, just call the function
                     {
                         mesrec->background(mem_start);
                     }
@@ -109,10 +107,10 @@ int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
     if(mesrec && payload)
     {   
         bool changed = false;
-        uint8_t*mem_start = mesrec->mem_struct_pnt;
+        uint8_t*mem_start = mesrec->mem_obj_pnt;
         uint32_t index = 0;
         uint32_t pl_start = 0;
-        uint32_t pl_len = mesrec->mem_struct_len;
+        uint32_t pl_len = mesrec->mem_obj_len;
         if(payload)
         {
             if(mesrec->indexed32)
