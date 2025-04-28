@@ -77,9 +77,11 @@ typedef int (*mem_mess_immediate_t)(mem_mess_record_t const *mesrec, uint8_t *pa
 int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
 int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
 
-// helper macros for building table
+// helper macros for building table, memory objects are either single or array and sizes are recorded for 
+// proper error checking.
 #define MM_OBJ_ARR(arr) .mem_obj_pnt = arr, .mem_obj_len = sizeof arr, .mem_instance_len = sizeof arr[0]
 #define MM_OBJ(obj) .mem_obj_pnt = &obj, .mem_obj_len = sizeof obj, .mem_instance_len = sizeof obj
+#define MM_STRS(arr_of_str) .mem_obj_pnt = arr_of_str, .mem_obj_len = sizeof arr_of_str, .mem_instance_len = sizeof arr_of_str[0]
 
 // message definition record, maps message token to memory area and processing options
 // optional features assume that 0 or NULL is disabled

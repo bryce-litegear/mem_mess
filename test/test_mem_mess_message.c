@@ -1,4 +1,12 @@
-
+/**
+ * @file test_mem_mess_message.c
+ * @author Bryce Deary
+ * @brief Test each setter and getter types
+ * @date 2025-04-27
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 
 
 #include "unity.h"
@@ -14,6 +22,7 @@ void setUp(void)
 void tearDown(void)
 {
 }
+
 
 uint32_t reg_buf[2] = {123, 456};
 
