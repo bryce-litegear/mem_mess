@@ -9,19 +9,23 @@
  */
 
 #include "mem_mess_memory.h"
+#include <stdbool.h>
 
-
+// we don't check for changed data here. User should check the update
+// vector before calling if no update is desired.
 int mem_kin_start_move(kin_set_t *kset, int32_t update[])
 {
-    kset->step = 1;
+    bool changed = false;
     for(int i = 0; i < kset->set_size; i++)
     {
         kin_val_t *v = kset->val[i];
-        v->start = v->current;
-        v->target = update[i];
+        if(v->target != update[i]) changed = true;
+        v->target = update[i];  // set new target
+        v->start = v->current;  // set new start point
         v->current = v->start + (v->target - v->start) / kset->steps;        
     }
-    return kset->step < kset->set_size ? 0: 1;
+    if(changed) kset->step = 1;     // if something changed, start the filter over
+    return kset->step < kset->steps ? 0: 1;  // report state of the filter
 }
 
 int mem_kin_move(kin_set_t *kset)
@@ -36,5 +40,5 @@ int mem_kin_move(kin_set_t *kset)
         }
         return 0;
     }
-    return 1;
+    return 1; // filter completed
 }
