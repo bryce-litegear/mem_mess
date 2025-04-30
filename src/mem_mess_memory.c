@@ -13,7 +13,7 @@
 
 // we don't check for changed data here. User should check the update
 // vector before calling if no update is desired.
-int mem_kin_start_move(kin_set_t *kset, int32_t update[])
+int mem_kin_set_update(kin_set_t *kset, int32_t update[])
 {
     bool changed = false;
     for(int i = 0; i < kset->set_size; i++)
@@ -22,13 +22,16 @@ int mem_kin_start_move(kin_set_t *kset, int32_t update[])
         if(v->target != update[i]) changed = true;
         v->target = update[i];  // set new target
         v->start = v->current;  // set new start point
-        v->current = v->start + (v->target - v->start) / kset->steps;        
+        if(v->target < v->start)        
+            v->current = v->start + ((v->target - v->start) - (kset->steps >> 1)) / kset->steps;        
+        else
+            v->current = v->start + ((v->target - v->start) + (kset->steps >> 1)) / kset->steps;        
     }
     if(changed) kset->step = 1;     // if something changed, start the filter over
     return kset->step < kset->steps ? 0: 1;  // report state of the filter
 }
 
-int mem_kin_move(kin_set_t *kset)
+int mem_kin_advance(kin_set_t *kset)
 {
     if(kset->step < kset->steps)
     {
@@ -36,7 +39,14 @@ int mem_kin_move(kin_set_t *kset)
         for(int i = 0; i<kset->set_size; i++)
         {
             kin_val_t *v = kset->val[i];
-            v->current = v->start + ((v->target - v->start) * kset->step) / kset->steps;
+            if(v->target < v->start)
+            {
+                v->current = v->start + (((v->target - v->start) * kset->step) - (kset->steps >> 1)) / kset->steps;
+            }
+            else
+            {
+                v->current = v->start + (((v->target - v->start) * kset->step) + (kset->steps >> 1)) / kset->steps;
+            }
         }
         return 0;
     }

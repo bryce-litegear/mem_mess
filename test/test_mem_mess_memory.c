@@ -6,7 +6,7 @@
 #include "mem_mess_memory.h"
 
 kin_val_t my_data[5] = {0};
-int32_t my_new_data[5] = {200, 5, -423, 9, 3000};
+int32_t my_new_data[5] = {203, -5, -423, 19, 63217};
 
 void setUp(void)
 {
@@ -19,7 +19,7 @@ void tearDown(void)
 
 DEC_KIN_SET(kin_test, 5) ;;
 
-DEF_KIN_SET(kin_test, 5, 9) 
+DEF_KIN_SET(kin_test, 5, 10) 
 {
     [0]=&my_data[0],
     [1]=&my_data[1],
@@ -30,7 +30,7 @@ DEF_KIN_SET(kin_test, 5, 9)
 
 void print_kin_set(kin_set_t *kset)
 {
-    for(int i=0; i < KIN_SET_SIZE(kin_test); i++)
+    for(int i=0; i < GET_KIN_SET_SIZE(kin_test); i++)
     {
         printf("%i, ", kset->val[i]->current);
     }
@@ -39,46 +39,91 @@ void print_kin_set(kin_set_t *kset)
 
 void test_mem_kin(void)
 {
-    TEST_ASSERT_EQUAL(0, mem_kin_start_move(&kin_test_set, my_new_data));
+    TEST_ASSERT_EQUAL(0, mem_kin_set_update(&kin_test_set, my_new_data));
+    printf("\n");
     print_kin_set(&kin_test_set);
 
-    for(int step = 0; step < KIN_SET_STEPS(kin_test)-1; step++)
+    for(int step = 0; step < GET_KIN_SET_STEPS(kin_test)-1; step++)
     {
-        TEST_ASSERT_EQUAL(0, mem_kin_move(&kin_test_set));
+        TEST_ASSERT_EQUAL(0, mem_kin_advance(&kin_test_set));
         print_kin_set(&kin_test_set);        
     }
 
-    TEST_ASSERT_GREATER_THAN(0, mem_kin_move(&kin_test_set));
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));
 }
 
 void test_mem_kin_1(void)
 {
     kin_test_set.steps = 1;
-    TEST_ASSERT_GREATER_THAN(0, mem_kin_start_move(&kin_test_set, my_new_data));
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_set_update(&kin_test_set, my_new_data));
+    printf("\n");
     print_kin_set(&kin_test_set);
 
-    for(int step = 0; step < KIN_SET_STEPS(kin_test)-1; step++)
+    for(int step = 0; step < GET_KIN_SET_STEPS(kin_test)-1; step++)
     {
-        TEST_ASSERT_GREATER_THAN(0, mem_kin_move(&kin_test_set));
+        TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));
         print_kin_set(&kin_test_set);        
     }
 
-    TEST_ASSERT_GREATER_THAN(0, mem_kin_move(&kin_test_set));
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));
 }
 
-void test_mem_kin_4(void)
+void test_mem_kin_21(void)
 {
-    kin_test_set.steps = 4;
-    TEST_ASSERT_EQUAL(0, mem_kin_start_move(&kin_test_set, my_new_data));
+    int32_t my_new_data2[5] = {-2030, 50, 4230, -190, -6321};
+    SET_KIN_SET_STEPS(kin_test, 21);
+    TEST_ASSERT_EQUAL(0, mem_kin_set_update(&kin_test_set, my_new_data));
+    printf("\n");
     print_kin_set(&kin_test_set);
 
-    for(int step = 0; step < KIN_SET_STEPS(kin_test)-1; step++)
+    for(int step = 0; step < GET_KIN_SET_STEPS(kin_test)-1; step++)
     {
-        TEST_ASSERT_EQUAL(0, mem_kin_move(&kin_test_set));
+        TEST_ASSERT_EQUAL(0, mem_kin_advance(&kin_test_set));
         print_kin_set(&kin_test_set);        
     }
 
-    TEST_ASSERT_GREATER_THAN(0, mem_kin_move(&kin_test_set));
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));
+
+    TEST_ASSERT_EQUAL(0, mem_kin_set_update(&kin_test_set, my_new_data2));
+    printf("\n");
+    print_kin_set(&kin_test_set);
+
+    for(int step = 0; step < GET_KIN_SET_STEPS(kin_test)-1; step++)
+    {
+        TEST_ASSERT_EQUAL(0, mem_kin_advance(&kin_test_set));
+        print_kin_set(&kin_test_set);        
+    }
+
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));    
+
+
+    TEST_ASSERT_EQUAL(0, mem_kin_set_update(&kin_test_set, my_new_data));
+    printf("\n");
+    print_kin_set(&kin_test_set);
+
+    for(int step = 0; step < GET_KIN_SET_STEPS(kin_test)-1; step++)
+    {
+        TEST_ASSERT_EQUAL(0, mem_kin_advance(&kin_test_set));
+        print_kin_set(&kin_test_set);        
+    }
+
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));    
+}
+
+void test_mem_kin_781(void)
+{
+    SET_KIN_SET_STEPS(kin_test, 781);
+    TEST_ASSERT_EQUAL(0, mem_kin_set_update(&kin_test_set, my_new_data));
+    printf("\n");
+    print_kin_set(&kin_test_set);
+
+    for(int step = 0; step < GET_KIN_SET_STEPS(kin_test)-1; step++)
+    {
+        TEST_ASSERT_EQUAL(0, mem_kin_advance(&kin_test_set));
+        print_kin_set(&kin_test_set);        
+    }
+
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));
 }
 
 
@@ -86,17 +131,18 @@ void test_mem_kin_not_new(void)
 {
     int32_t my_zero_data[5] = {0};
 
-    TEST_ASSERT_GREATER_THAN(0, mem_kin_start_move(&kin_test_set, my_zero_data));
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_set_update(&kin_test_set, my_zero_data));
+    printf("\n");
     print_kin_set(&kin_test_set);
 
-    for(int step = 0; step < KIN_SET_STEPS(kin_test)-1; step++)
+    for(int step = 0; step < GET_KIN_SET_STEPS(kin_test)-1; step++)
     {
-        TEST_ASSERT_GREATER_THAN(0, mem_kin_move(&kin_test_set));
+        TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));
         print_kin_set(&kin_test_set);    
         break;    
     }
 
-    TEST_ASSERT_GREATER_THAN(0, mem_kin_move(&kin_test_set));
+    TEST_ASSERT_GREATER_THAN(0, mem_kin_advance(&kin_test_set));
 }
 
 
