@@ -112,14 +112,14 @@ kinset_t _name ## _set ={.set_size = _size, .steps = _steps}; \
 /* add static inits of the kin_val_t pointers */ \
 kin_val_t* name ## _values[ _size ] = \
 
-
 // helper to declare kinematic set
 #define DEC_KINSET(_name, _size) \
 extern kinset_t _name ## _set; \
 extern kin_val_t* name ## _values[ _size ] \
 
 /**
- * @brief apply a new data vector (set) to the kinset_t object
+ * @brief apply a new data vector (set) to the kinset_t object, 
+ *  advance current to start and set new targets
  * 
  * @param kset the data set object with internally constant length
  * @param update a vactor of the same length as kset
@@ -127,7 +127,9 @@ extern kin_val_t* name ## _values[ _size ] \
  */
 int mem_kinset_update(kinset_t *kset, int32_t update[]);
 
-int mem_kinset_update(kinset_t *kset, int32_t update[]);
+int mem_kinset_set_start(kinset_t *kset, int32_t const update[]);
+int mem_kinset_set_target(kinset_t *kset, int32_t const update[]);
+int mem_kinset_get_current(kinset_t *kset, int32_t current[]);
 
 /**
  * @brief cycle the kinset_t object, advance it to next state or
