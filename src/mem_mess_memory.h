@@ -3,11 +3,18 @@
 #define MEM_MESS_MEMORY_H
 #include <stdint.h>
 
+/**
+ * @brief alias for pointer to string const
+ */
 typedef char const * str_const_t;
+
+/**
+ * @brief the log is just a collection of pointers to const string
+ */
 typedef struct str_log_t
 {
-    str_const_t *last;  // last use
-    str_const_t *next;  // next location
+    str_const_t *oldest;  // last use
+    str_const_t *last;  // next location
     uint16_t arr_len;   // 
     str_const_t log[];
 } str_log_t;
@@ -29,24 +36,14 @@ void mem_log_str(str_log_t *log, str_const_t str);
 str_const_t mem_log_str_get(str_log_t *log);
 
 #define STR_LOG_DEF(name, size) \
-str_const_t name ## _slog[size]; \
-str_const_t *next_ ## name = name ## _slog; \
-void add_ ## name(str_const_t str)  \
-{   \
-    if(*next_ ## name == NULL) *next_ ## name = str; \
-    /* not a repeat, write it */ \
-    else if(*next_ ## name != str) \
-    {   \
-        next_ ## name++;  \
-        if(next_ ## name >= &name ## _slog) next_ ## name = name ## _slog; \
-        *next_ ## name = str; \
-    } \
-}
+str_log_t name ## _slog = {.arr_len = size}; \
+str_const_t name ## _slog_store[size]; \
 
+#define STR_LOG_DEC(name) \
+extern str_log_t name ## _slog
 
-#define STR_LOG_DEC(name, size) \
-extern str_const_t name ## _slog[ size ]; \
-void add_ ## name(str_const_t str)
+void mem_str_log_add(str_log_t *slog, char const* str);
+char const *mem_str_log_get(str_log_t *slog);
 
 
 /*  Move Set functions, This can be used to do smooth transition like 
@@ -78,9 +75,9 @@ void add_ ## name(str_const_t str)
  */
 typedef struct kin_val_t
 {
-    int32_t current;
-    int32_t start;
-    int32_t target;
+    int32_t start;      // a first or start point
+    int32_t target;     // a second or target point
+    int32_t current;    // the current calculated intermediate state
 } kin_val_t;
 
 /**
@@ -88,58 +85,58 @@ typedef struct kin_val_t
  * member objects. It maintains the state of the set as it advances from 
  * start to target.
  */
-typedef struct kin_set_t
+typedef struct kinset_t
 {
     uint16_t const set_size;    // immutable size of the set
     uint16_t step;              // the current step (65535 at 3ms update is 196 seconds)
     int32_t steps;              // the number of steps to move over, (32bit just for math and alignment, max is really 65535)
     kin_val_t *val[];           // array of kin_val_t *val[set_size] immediately following this struct in memory
-} kin_set_t;
+} kinset_t;
 
 // get the set size by name (useful in iterating over set)
-#define GET_KIN_SET_SIZE(_name) \
+#define GET_KINSET_SIZE(_name) \
     (_name ## _set.set_size)
 
 // get the current number of steps in the named set
-#define GET_KIN_SET_STEPS(_name) \
+#define GET_KINSET_STEPS(_name) \
     (_name ## _set.steps)    
 
 // Set the number of steps in the named set, setting this while processing 
 // a sequence may cause a noticeable jump depending on current state.
-#define SET_KIN_SET_STEPS(_name, _steps) \
+#define SET_KINSET_STEPS(_name, _steps) \
     do{_name ## _set.steps = (_steps & 0xffff);}while(0)
 
 // helper to define kinematic set
-#define DEF_KIN_SET(_name, _size, _steps) \
-kin_set_t _name ## _set ={.set_size = _size, .steps = _steps}; \
+#define DEF_KINSET(_name, _size, _steps) \
+kinset_t _name ## _set ={.set_size = _size, .steps = _steps}; \
 /* add static inits of the kin_val_t pointers */ \
 kin_val_t* name ## _values[ _size ] = \
 
 
 // helper to declare kinematic set
-#define DEC_KIN_SET(_name, _size) \
-extern kin_set_t _name ## _set; \
+#define DEC_KINSET(_name, _size) \
+extern kinset_t _name ## _set; \
 extern kin_val_t* name ## _values[ _size ] \
 
-
-
 /**
- * @brief apply a new data vector (set) to the kin_set_t object
+ * @brief apply a new data vector (set) to the kinset_t object
  * 
  * @param kset the data set object with internally constant length
  * @param update a vactor of the same length as kset
  * @return int 0 for normal operation, positive if represents no change
  */
-int mem_kin_set_update(kin_set_t *kset, int32_t update[]);
+int mem_kinset_update(kinset_t *kset, int32_t update[]);
+
+int mem_kinset_update(kinset_t *kset, int32_t update[]);
 
 /**
- * @brief cycle the kin_set_t object, advance it to next state or
+ * @brief cycle the kinset_t object, advance it to next state or
  *      if at terminal state do nothing.
  * 
  * @param kset 
  * @return int 0 for normal, positive when exhausted 
  */
-int mem_kin_advance(kin_set_t *kset);
+int mem_kin_advance(kinset_t *kset);
 
 
 
