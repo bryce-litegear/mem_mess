@@ -36,8 +36,6 @@
 #define STATIC static
 #endif
 
-//#define MEM_REC_IS_SORTED
-
 
 // we pass the target pointer to background process, this macro will validate
 // that pointer as an member of an array of structure. So the array must be in the 

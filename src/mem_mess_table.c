@@ -13,7 +13,7 @@
 #include <stddef.h>
 
 // if user defines the table already sorted by token we can use bsearch to find the record
-#ifdef MEM_REC_IS_SORTED
+
 #include <stdlib.h>
 
 // bsearch compare function key in obj
@@ -25,13 +25,13 @@ STATIC int comp_tokin_no(const void* key, const void* obj)
     return (int)*token - (int)mr->token;
 }
 
-mem_mess_record_t const *mem_mes_get_record(mem_mess_table_t const *table, uint16_t token)
+// sorted array getter version
+mem_mess_record_t const *mem_mes_get_record_sorted(mem_mess_table_t const *table, uint16_t token)
 {
     return bsearch(&token, table->table,  table->table_entries, sizeof table->table[0], comp_tokin_no);
 }
-    
-#else // if not sorted just do linear search for token.
-
+  
+// non sorted array getter, just iterate and test
 mem_mess_record_t const *mem_mes_get_record(mem_mess_table_t const *table, uint16_t token)
 {
     for(int rec = 0; rec < table->table_entries; rec++)
@@ -40,5 +40,3 @@ mem_mess_record_t const *mem_mes_get_record(mem_mess_table_t const *table, uint1
     }
     return NULL;
 }
-
-#endif
