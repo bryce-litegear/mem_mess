@@ -48,6 +48,8 @@
 
 */
 
+#define ARR_LEN(arr) (sizeof arr/ sizeof arr[0])
+
 /**
  * @brief The structure to hold one member of a set. This structure may be 
  * embedded inside other structures and is pointed to by the set object (below)
@@ -69,7 +71,7 @@ typedef struct kinset_t
     uint16_t const set_size;    // immutable size of the set
     uint16_t step;              // the current step (65535 at 3ms update is 196 seconds)
     int32_t steps;              // the number of steps to move over, (32bit just for math and alignment, max is really 65535)
-    kin_val_t *val[];           // array of kin_val_t *val[set_size] immediately following this struct in memory
+    kin_val_t ** const val;     // array of kin_val_t *val[set_size] 
 } kinset_t;
 
 // get the set size by name (useful in iterating over set)
@@ -87,14 +89,14 @@ typedef struct kinset_t
 
 // helper to define kinematic set
 #define DEF_KINSET(_name, _size, _steps) \
-kinset_t _name ## _set ={.set_size = _size, .steps = _steps}; \
+kinset_t _name ## _set ={.set_size = _size, .steps = _steps, .val = _name ## _values}; \
 /* add static inits of the kin_val_t pointers */ \
 kin_val_t* _name ## _values[ _size ] = 
 
 // helper to declare kinematic set
 #define DEC_KINSET(_name, _size) \
 extern kinset_t _name ## _set; \
-extern kin_val_t* _name ## _values[ _size ] \
+extern kin_val_t* _name ## _values[ _size ] 
 
 /**
  * @brief apply a new data vector (set) to the kinset_t object, 
