@@ -26,6 +26,7 @@ typedef struct str_log_t
     str_const_t *oldest;  // last use
     str_const_t *last;  // next location
     const uint16_t arr_len;   // 
+    uint16_t lost;
     str_const_t * const log;
 } str_log_t;
 
