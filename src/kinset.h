@@ -89,34 +89,53 @@ typedef struct kinset_t
 #define DEF_KINSET(_name, _size, _steps) \
 kinset_t _name ## _set ={.set_size = _size, .steps = _steps}; \
 /* add static inits of the kin_val_t pointers */ \
-kin_val_t* name ## _values[ _size ] = \
+kin_val_t* _name ## _values[ _size ] = 
 
 // helper to declare kinematic set
 #define DEC_KINSET(_name, _size) \
 extern kinset_t _name ## _set; \
-extern kin_val_t* name ## _values[ _size ] \
+extern kin_val_t* _name ## _values[ _size ] \
 
 /**
  * @brief apply a new data vector (set) to the kinset_t object, 
  *  advance current to start and set new targets
  * 
  * @param kset the data set object with internally constant length
- * @param update a vactor of the same length as kset
+ * @param update a vector of the same length as kset
  * @return int 0 for normal operation, positive if represents no change
  */
 int kinset_update(kinset_t *kset, int32_t update[]);
 
+/**
+ * @brief get a copy of the current data vector
+ * 
+ * @param kset the data set object with internally constant length
+ * @param current [out] a vector of the same length as kset
+ * @return int 0 for current is not target, 1 when current is target 
+ */
+int  kinset_get_current(kinset_t *kset, int32_t current[]);
+
 int kinset_set_start(kinset_t *kset, int32_t const update[]);
 int kinset_set_target(kinset_t *kset, int32_t const update[]);
-int kinset_get_current(kinset_t *kset, int32_t current[]);
 
 /**
  * @brief cycle the kinset_t object, advance it to next state or
  *      if at terminal state do nothing.
  * 
- * @param kset 
+ * @param kset pointer to the data set object with internally constant length
  * @return int 0 for normal, positive when exhausted 
  */
 int kinset_advance(kinset_t *kset);
+
+
+/**
+ * @brief move current to a specific step between start and target,
+ *  useful when building a fader
+ * 
+ * @param kset pointer to the data set object with internally constant length
+ * @param step a step in the range 0 to kset->steps
+ * @return int non zero when current is at target
+ */
+int mem_kin_move(kinset_t *kset, uint16_t step);
 
 #endif // KINSET_H
