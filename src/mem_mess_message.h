@@ -89,7 +89,7 @@ typedef struct mem_mess_record_t
     mem_mess_immediate_t immediate;     // optional user provided override function
     mem_mess_background_t background;   // optional user background processor of instance data
     void *mem_obj_pnt;                  // root pointer
-    uint32_t mem_obj_len;               // root length
+    uint32_t mem_obj_len;               // root length, used for bounds checking
     uint16_t mem_instance_len;          // instance len if subscripted, else equal to mem_obj_len
     uint16_t token;                     // the sortable unique token that identifies the message (message_no)
     uint16_t getter_token;              // for getters, the response token
@@ -101,7 +101,9 @@ typedef struct mem_mess_record_t
         uint16_t len32: 1;          // 4 bytes in payload is a length
         uint16_t is_getter: 1;      // the message is a getter (causes a new message to be built)
         uint16_t bg_on_change: 1;   // only call background function on change
-        uint16_t res: 10;           // reserved
+        uint16_t is_string: 1;      // the payload is a variable len string
+        uint16_t allow_broadcast: 1;// the message might be a broadcast (no direct response)
+        uint16_t reserved: 8;       // future space
     };
     uint8_t index_offset;   // offset of index within the pl_offset
     uint8_t len_offset;     // offset of len withing pl_offset
@@ -112,12 +114,31 @@ typedef struct mem_mess_record_t
 /**
  * @brief main caller for processing payloads against message descriptions
  * 
- * @param mesrec 
- * @param payload 
- * @param pl_size 
+ * @param mes_rec pointer to the message definition record
+ * @param payload pointer to completed (validated) payload
+ * @param pl_size the payload size
  * @return int 
  */
-int mem_mess_process(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
+int mem_mess_process(mem_mess_record_t const *mes_rec, uint8_t *payload, uint32_t pl_size);
+
+/**
+ * @brief helper function to pull index out of pre-payload area
+ * 
+ * @param mes_rec - the message def record
+ * @param payload - buffer containing at least the pre-payload data
+ * @return uint32_t the extracted index
+ */
+uint32_t mem_mess_get_index(mem_mess_record_t const *mes_rec, uint8_t const *payload);
+
+/**
+ * @brief helper function to pull length out of pre-payload area
+ * 
+ * @param mes_rec - the message def record
+ * @param payload - buffer containing at least the pre-payload data
+ * @return uint32_t the extracted length
+ */
+uint32_t mem_mess_get_length(mem_mess_record_t const *mes_rec, uint8_t const *payload);
+
 
 
 

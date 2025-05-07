@@ -14,6 +14,49 @@
 
 mem_mess_scheduler_t mem_mess_scheduler = NULL;
 mem_mess_map_t mem_mess_map = NULL; // global mapper if not rec specific
+uint32_t mem_mess_get_length(mem_mess_record_t const *mes_rec, uint8_t const *payload)
+{
+    uint32_t temp = 0;
+    int32_t len = 0;
+    if (mes_rec->len8)
+    {
+        len = 1;
+    }
+    else if(mes_rec->len32)
+    {
+        len = 4;
+    }
+    else // no index
+    {
+        return mes_rec->mem_instance_len;
+    }    
+    memcpy(&temp, &payload[mes_rec->len_offset], len );
+    return temp;
+}
+
+// extracted index might need re-mapping before memory access
+uint32_t mem_mess_get_index(mem_mess_record_t const *mes_rec, uint8_t const *payload)
+{
+    uint32_t index = 0;
+    int32_t len = 0;
+    if (mes_rec->indexed8)
+    {
+        len = 1;
+    }
+    else if(mes_rec->indexed32)
+    {
+        len = 4;
+    }
+    else // no index
+    {
+        return 0;
+    }
+    memcpy(&index, &payload[mes_rec->index_offset], len );
+    if(mes_rec->mapper) index = mes_rec->mapper(index);
+    else if (mem_mess_map) index = mem_mess_map(index);    
+    return index;
+}
+
 
 /**
  * @brief main copy function, called by default if no user immediate is provided 
@@ -34,6 +77,7 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
         uint32_t pl_len = mesrec->mem_instance_len;  // initial payload length
         if(payload) // if we have a payload, process and copy from it to memory
         {
+            index = mem_mess_get_index(memrec, payload);
             if(mesrec->indexed32) // payload has a 32bit sized address
             {
                 memcpy(&index, &payload[mesrec->index_offset], 4);
@@ -43,8 +87,7 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
             else if(mesrec->indexed8) // payload has a byte size address
             {
                 memcpy(&index, &payload[mesrec->index_offset], 1);
-                if(mesrec->mapper) index = mesrec->mapper(index);
-                else if (mem_mess_map) index = mem_mess_map(index);
+
             }
 
             if(mesrec->len32)  // payload was variable length with 32bit length value

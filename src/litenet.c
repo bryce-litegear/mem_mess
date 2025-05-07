@@ -17,6 +17,7 @@ typedef enum litenet_state_t
     LN_MESS_NO,         // the message number
     LN_PAYLOAD,         // collect payload or skip if length is 0
     LN_PAYLOAD_SPECIAL, // was variable length with length in the early payload
+    LN_WAIT_ZERO,       // if payload is a string
     LN_CHECK_AND_G0,    // validate checksum and jump to processing function.
     LN_SNIFF_PAYLOAD,   // allow follow along, not receiving
     LN_SNIFF_PAYLOAD_SPECIAL, // allow follow along, not receiving
@@ -90,9 +91,11 @@ static void reprocess_ln(litenet_t *ln)
     while(next < end) ln_process(ln, *next++);  // reprocess the data
 }
 
+// main state machine, process one byte at a time.
+// ch is 16 bits to allow passing in error codes to restart state machine.
 void litenet_process(litenet_t *ln, uint16_t ch)
 {
-    uint8_t new_byte = ch & 0xff;
+    uint8_t new_byte = ch & 0xff; // isolate byte
 
     // if bus error, do reset
     if(ch != new_byte) ln->state = LN_SYNC;
@@ -144,49 +147,106 @@ void litenet_process(litenet_t *ln, uint16_t ch)
                 if (ln->mes_rec)
                 {
                     cycle_checksum(ln, new_byte);
-                    uint16_t payload_len = ln->mes_rec->mem_instance_len;
-                    // for non zero payloads, setup for anything special
-                    if (payload_len)
+
+                    if(ln->mes_rec->is_string) // wait for overrun or zero
                     {
-                        if(ln->mes_rec->len_in_pl) // special flag
-                        {
-                            ln->state = LN_PAYLOAD_SPECIAL;
-                        }
-                        else
-                        {
-                            ln->state = LN_PAYLOAD;
-                        }
-                    }
-                    else if(ln->mes_rec->is_string)
+                        ln->check_byte_index = MAX_PAYLOAD_SIZE - 1; // the zero and checksum on end
+                        ln->state = LN_WAIT_ZERO;
+                    }            
+                    else if(ln->mes_rec->pl_offset) // some extra data before payload
                     {
-                        payload_len = ln->buffer_len - sizeof ln->mes->header - sizeof(ln_check_t);
+                        ln->check_byte_index = ln->mes_rec->mem_instance_len +
+                                               ln->mes_rec->pl_offset;
+                        ln->state = LN_PAYLOAD_SPECIAL;                                               
+                    }        
+                    else if(ln->mes_rec->mem_obj_len)
+                    {
+                        ln->check_byte_index = ln->mes_rec->mem_instance_len;                        
+                        ln->state = LN_PAYLOAD;
                     }
                     else
                     {
+                        ln->check_byte_index = 0;
                         ln->state = LN_CHECK_AND_G0;
-                    }
-                    // set target byte to inspect for checksum or extend based on embedded length
-                    
-                    ln->check_byte_index = ln->next_idx + payload_len;
-    
-                    // don't allow overflow
-                    if(ln->check_byte_index >= ln->buffer_len) 
-                    {
-                        // too big to process so assume bad header
-                        reprocess_ln(lnt);
                     }
                 }
                 else // unknown message reprocess the mes->header.           
                 {
-                    reprocess_ln(lnt);
+                    reprocess_ln(ln);
                 }
             }
             else
             { // header direction parity or protocol failed, reprocess the mes->header.           
-                reprocess_ln(lnt);
+                reprocess_ln(ln);
             }
         }
-        break;        
+        break;      
+
+        case LN_PAYLOAD:                // collect payload or skip if length is 0
+        {
+            cycle_checksum(ln, new_byte);
+            if (ln->next_idx == ln->check_byte_index)
+            {
+                ln->state = LN_CHECK_AND_G0;
+            }
+        }
+        break;
+
+        case LN_PAYLOAD_SPECIAL:        // was variable length with length in the early payload
+        {
+            cycle_checksum(ln, new_byte);
+            if (ln->next_idx == ln->mes_rec->pl_offset)
+            {
+                uint32_t len = mem_mess_get_length(ln->mes_rec, ln->mes_buffer->payload);
+                ln->check_byte_index = ln->mes_rec->pl_offset + len;
+                ln->state = LN_PAYLOAD;
+            }
+        }
+        break; 
+
+        case LN_WAIT_ZERO:              // if payload is a string
+        {
+            cycle_checksum(ln, new_byte);
+            if(new_byte == 0 || ln->next_idx == ln->check_byte_index)
+            {
+                ln->state = LN_CHECK_AND_G0;
+            }
+
+        }
+        break;
+
+        case LN_CHECK_AND_G0:           // validate checksum and jump to processing function.
+        {
+            cycle_checksum(ln, new_byte);
+
+        }
+        break;
+
+        case LN_SNIFF_PAYLOAD:          // allow follow along, not receiving
+        {
+            cycle_checksum(ln, new_byte);
+
+        }
+        break;
+
+        case LN_SNIFF_PAYLOAD_SPECIAL:  // allow follow along, not receiving
+        {
+            cycle_checksum(ln, new_byte);
+
+        }
+        break;
+
+        case LN_SNIFF_CHECK:            // allow follow along, 
+        {
+            cycle_checksum(ln, new_byte);
+
+        }
+        break;
+
+
+
+
+
 
     }
 
