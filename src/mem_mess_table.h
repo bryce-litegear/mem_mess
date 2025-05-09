@@ -13,10 +13,8 @@
 
 #include "mem_mess_message.h"
 
+// forward ref
 typedef struct mem_mess_table_t mem_mess_table_t;
-
-
-
 
 /**
  * @brief two helper functions to find a token(message number) in a set of message records,
@@ -54,6 +52,25 @@ typedef struct mem_mess_table_t
 {  .table=mes_rec_arr_name, \
     .table_entries = ARR_LEN(mes_rec_arr_name), \
     .get_record = mem_mes_get_record_sorted }
+
+
+
+/**
+ * @brief process a payload buffer against a mess_rec, with the table
+ *      provided for message linking.
+ * 
+ * @param mes_tbl pointer to the table
+ * @param mes_rec pointer to the message to process
+ * @param payload pointer to the data associated with the message
+ * @param pl_size buffer limit for payload error checking 
+ * @return int  0 - normal completion
+ *             >0 - indicates data was returned in payload
+ *             <0 - error         
+ */
+int mem_mess_process(mem_mess_table_t const *mes_tbl, mem_mess_record_t const *mes_rec, uint8_t *payload, uint32_t pl_size);
+
+
+
 
 
 #endif // MEM_MESS_TABLE_H

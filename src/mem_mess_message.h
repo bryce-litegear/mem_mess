@@ -10,13 +10,16 @@
  *  length.  The basic flow is, message is processed after a unique token has been 
  *  discovered, token is looked up to find mem_mess_record_t structure which contains 
  *  pointers to associated memory locations. message payload is processed according 
- *  to the mem_mess_record, which generally consists of do a memcpy from the payload
+ *  to the mem_mess_record, which generally consists of a memcpy from the payload
  *  buffer to memory, or memory to a payload buffer in the case of a get message.
- *  Get messages may have a second token to define a return message if the get 
+ *  Get messages typically may have a second token to define a return message if the get 
  *  message is complex or shares some common response message.
  *  memcpy will always be used to avoid any alignment issues. 
  *  Finally at least two optional functions are available, one immediate and one 
  *  scheduled it optional conditions like change-of-data detection.
+ *  Getter messages with non-zero lengths and a secondary token are treated like a
+ *  setter followed by a getter, with the getter returning data in the original payload
+ *  buffer
  * 
  */
 #ifndef MEM_MESS_MESSAGE_H
@@ -69,7 +72,7 @@ typedef void (*mem_mess_scheduler_t)(mem_mess_background_t bg_func, void *memadd
 extern mem_mess_scheduler_t mem_mess_scheduler;
 
 // for immediate action on data, bypass the default copy
-typedef int (*mem_mess_immediate_t)(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
+typedef int (*mem_mess_immediate_t)(mem_mess_record_t const *mesrec, void *payload, uint32_t pl_size);
 
 // the default processing functions, available for user processing in user supplied immediate functions.
 int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size);
@@ -109,17 +112,6 @@ typedef struct mem_mess_record_t
     uint8_t len_offset;     // offset of len withing pl_offset
 
 } mem_mess_record_t;
-
-
-/**
- * @brief main caller for processing payloads against message descriptions
- * 
- * @param mes_rec pointer to the message definition record
- * @param payload pointer to completed (validated) payload
- * @param pl_size the payload size
- * @return int 
- */
-int mem_mess_process(mem_mess_record_t const *mes_rec, uint8_t *payload, uint32_t pl_size);
 
 /**
  * @brief helper function to pull index out of pre-payload area

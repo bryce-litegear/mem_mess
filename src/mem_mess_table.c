@@ -40,3 +40,33 @@ mem_mess_record_t const *mem_mes_get_record(mem_mess_table_t const *table, uint1
     }
     return NULL;
 }
+
+int mem_mess_process(mem_mess_table_t const *mes_tbl, 
+                     mem_mess_record_t const *mes_rec, 
+                     uint8_t *payload, 
+                     uint32_t pl_size)
+{
+    if(mes_rec)
+    {
+        // if user immediate is defined, just do that, the scope of the immediate
+        // function is typically higher level with access to parent scope objects
+        // or higher level protocol variables.
+        if(mes_rec->immediate)
+        {
+            return mes_rec->immediate(mes_rec, payload, pl_size);
+        }
+
+        if(mes_rec->is_getter)
+        {
+            uint32_t index = 
+        }
+        else
+        {
+            return mem_mess_setter_copy(mes_rec, payload, pl_size);
+        }
+    }
+    return -1;
+}
+
+
+

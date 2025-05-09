@@ -24,9 +24,9 @@ typedef enum litenet_state_t
     LN_SNIFF_CHECK,     // allow follow along, not receiving
 } litenet_state_t;
 
-void ln_set_address(ln_process_obj_t *lnt, uint8_t address)
+void ln_set_address(litenet_t *ln, uint8_t address)
 {
-    ln->ln_address = address & 0x7f; // limit to 7 bits
+    ln->address = address & 0x7f; // limit to 7 bits
 }
 
 uint8_t litenet_address; // global address or zero
@@ -217,7 +217,28 @@ void litenet_process(litenet_t *ln, uint16_t ch)
 
         case LN_CHECK_AND_G0:           // validate checksum and jump to processing function.
         {
-            cycle_checksum(ln, new_byte);
+            if(ln->checksum == new_byte || new_byte == 0xee)
+            {
+                int32_t ret = 0;
+                if(ln->mes_rec->immediate)
+                {
+                    ret = ln->mes_rec->immediate(ln->mes_rec, ln->mes_buffer, ln->rec_buffer_limit);
+                }
+                else if(ln->mes_rec->is_getter)
+                {
+                    
+                }
+                else
+                {
+                    ret = mem_mess_setter_copy(ln->mes_rec, ln->mes_buffer->payload, MAX_PAYLOAD_SIZE);
+                }
+                
+            }
+            else // recursively reprocess in place
+            {
+                reprocess_ln(ln);
+                break;
+            }            
 
         }
         break;
@@ -238,8 +259,15 @@ void litenet_process(litenet_t *ln, uint16_t ch)
 
         case LN_SNIFF_CHECK:            // allow follow along, 
         {
-            cycle_checksum(ln, new_byte);
+            if(ln->checksum == new_byte || new_byte == 0xee)
+            {
 
+            }
+            else // recursively reprocess in place
+            {
+                reprocess_ln(ln);
+                break;
+            }     
         }
         break;
 

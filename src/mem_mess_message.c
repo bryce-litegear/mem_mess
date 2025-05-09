@@ -77,29 +77,8 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
         uint32_t pl_len = mesrec->mem_instance_len;  // initial payload length
         if(payload) // if we have a payload, process and copy from it to memory
         {
-            index = mem_mess_get_index(memrec, payload);
-            if(mesrec->indexed32) // payload has a 32bit sized address
-            {
-                memcpy(&index, &payload[mesrec->index_offset], 4);
-                if(mesrec->mapper) index = mesrec->mapper(index);
-                else if (mem_mess_map) index = mem_mess_map(index); // global mapper
-            }
-            else if(mesrec->indexed8) // payload has a byte size address
-            {
-                memcpy(&index, &payload[mesrec->index_offset], 1);
-
-            }
-
-            if(mesrec->len32)  // payload was variable length with 32bit length value
-            {
-                pl_len = 0;
-                memcpy(&pl_len, &payload[mesrec->len_offset], 4);
-            }
-            else if(mesrec->len8) // payload was variable length with 8bit length value
-            {
-                pl_len = 0;
-                memcpy(&pl_len, &payload[mesrec->len_offset], 1);
-            }
+            index = mem_mess_get_index(mesrec, payload);
+            pl_len = mem_mess_get_length(mesrec, payload);
 
             // if final payload length is non zero check for change and copy the data
             if(pl_len)
@@ -111,6 +90,10 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
                     uint16_t pl_start = mesrec->pl_offset;
                     changed = memcmp(mem_start, &payload[pl_start], pl_len);
                     if( changed ) memcpy(mem_start, &payload[pl_start], pl_len);
+                }
+                else
+                {
+                    return -1;
                 }
             }
 
@@ -147,56 +130,36 @@ int mem_mess_setter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
  */
 int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size)
 {
-    if(mesrec && payload)
+    if(mesrec && payload && pl_size)
     {   
         bool changed = false;
-        uint8_t*mem_start = mesrec->mem_obj_pnt;
+        uint8_t*mem_start = mesrec->mem_obj_pnt; // might be null 
         uint32_t index = 0;
-        uint32_t pl_start = 0;
-        uint32_t pl_len = mesrec->mem_obj_len;
+        uint16_t pl_start = mesrec->pl_offset;
+        uint32_t pl_len = mesrec->mem_instance_len; // might be 0
+        /* if there is a getter token, build payload according to that recipe*/
+        mem_mess_record_t const *get_rec = NULL;
+        if(mesrec->getter_token)
+        {
+            get_rec = mes
+        }
         if(payload)
         {
-            if(mesrec->indexed32)
-            {
-                memcpy(&index, &payload[mesrec->index_offset], 4);
-                if(mesrec->mapper) index = mesrec->mapper(index);
-                else if (mem_mess_map) index = mem_mess_map(index);
-                pl_start = (uint32_t)mesrec->index_offset + 4;
-                pl_len -= 4;
-            }
-            else if(mesrec->indexed8)
-            {
-                memcpy(&index, &payload[mesrec->index_offset], 1);
-                if(mesrec->mapper) index = mesrec->mapper(index);
-                else if (mem_mess_map) index = mem_mess_map(index);                
-                pl_start = (uint32_t)mesrec->index_offset + 1;
-                pl_len -= 1;
-            }
-
-            if(mesrec->len32)
-            {
-                pl_len = 0;
-                memcpy(&pl_len, &payload[mesrec->len_offset], 4);
-                if(mesrec->len_offset + 4 > pl_start) pl_start = mesrec->len_offset + 4;
-            }
-            else if(mesrec->len8)
-            {
-                pl_len = 0;
-                memcpy(&pl_len, &payload[mesrec->len_offset], 1);
-                if(mesrec->len_offset + 1 > pl_start) pl_start = mesrec->len_offset + 1;
-            }
+            index = mem_mess_get_index(mesrec, payload);
+            pl_len = mem_mess_get_length(mesrec, payload);
 
             if(pl_len)
             {
-                mem_start +=  index * pl_len;
-                changed = memcmp(mem_start, &payload[pl_start], pl_len);
-                if( changed ) memcpy(mem_start, &payload[pl_start], pl_len);
-            }
-
-            if( ! mesrec->bg_on_change || changed)
-            {
-                if(mem_mess_scheduler)
-                    mem_mess_scheduler(mesrec->background, mem_start);
+                if(pl_len <= pl_size - mesrec->pl_offset)
+                {
+                    mem_start +=  index * pl_len;
+                    memcpy(&payload[pl_start], mem_start, pl_len);
+                    return pl_len;
+                }
+                else
+                {
+                    return -1;
+                }
             }
         }
     }
@@ -211,36 +174,6 @@ int mem_mess_getter_copy(mem_mess_record_t const *mesrec, uint8_t *payload, uint
  * @return int 
  */
 
-/**
- * @brief main process payload function, apply the message record to the payload
- * 
- * @param mesrec - pointer to the message definition record
- * @param payload - pointer to a payload buffer
- * @param pl_size - the real or maximum size of payload used in preventing overflow
- * @return int negative if error was discovered, 0 for completed Ok or positive number of
- *      byte written to payload if mesrec was a getter message.
- */
-int mem_mess_process(mem_mess_record_t const *mesrec, uint8_t *payload, uint32_t pl_size)
-{
-    if(mesrec)
-    {
-        // if there is an immediate function, user takes all control, just call.
-        if(mesrec->immediate)
-        {
-            return  mesrec->immediate(mesrec, payload, pl_size);
-        }
 
-        if(mesrec->is_getter)
-        {
-            return mem_mess_getter_copy(mesrec, payload, pl_size);
-        }
-        else
-        {
-            return mem_mess_setter_copy(mesrec, payload, pl_size);
-        }
-    }
-    else return -1;
-
-}
 
 
